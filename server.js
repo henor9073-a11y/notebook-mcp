@@ -106,7 +106,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'read',
+    name: 'note_read',
     description: '读一个分区。section: today/sticky/for_nor/past。past 不传 date 只回日期列表，传 date(YYYY-MM-DD) 回那天的条目。',
     inputSchema: {
       type: 'object',
@@ -116,7 +116,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'delete',
+    name: 'note_delete',
     description: '删一条笔记。section=past 时必须带 date。',
     inputSchema: {
       type: 'object',
@@ -148,8 +148,8 @@ function textResult(obj) {
 function callTool(name, args = {}) {
   switch (name) {
     case 'write': return textResult(write(args.section, args.text));
-    case 'read': return textResult(read(args.section, args.date));
-    case 'delete': {
+    case 'note_read': return textResult(read(args.section, args.date));
+    case 'note_delete': {
       const r = removeEntry(args.section, args.id, args.date);
       if (!r) throw new Error('没找到这条');
       return textResult({ ok: true });
