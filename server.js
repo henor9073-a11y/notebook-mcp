@@ -74,6 +74,28 @@ function removeEntry(section, id, date) {
   return removed;
 }
 
+function editEntry(section, id, text, date) {
+  const data = readJSON(NOTEBOOK_FILE, EMPTY);
+  if (section === 'past') {
+    if (!date) throw new Error('改 past 里的条目要传 date');
+    const day = data.past.find(d => d.date === date);
+    if (!day) return null;
+    const entry = day.entries.find(e => e.id === id);
+    if (!entry) return null;
+    entry.text = text;
+    entry.editedAt = now();
+    writeJSON(NOTEBOOK_FILE, data);
+    return entry;
+  }
+  if (!DIRECT_SECTIONS.includes(section)) throw new Error(`section 必须是 ${DIRECT_SECTIONS.join('/')}/past`);
+  const entry = data[section].find(e => e.id === id);
+  if (!entry) return null;
+  entry.text = text;
+  entry.editedAt = now();
+  writeJSON(NOTEBOOK_FILE, data);
+  return entry;
+}
+
 function archiveToday() {
   const data = readJSON(NOTEBOOK_FILE, EMPTY);
   const date = todayStr();
@@ -130,6 +152,21 @@ const TOOLS = [
     },
   },
   {
+    name: 'note_edit',
+    description: '改一条笔记的内容。section=past 时必须带 date。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', enum: ['today', 'sticky', 'for_nor', 'past'] },
+        id: { type: 'string' },
+        text: { type: 'string' },
+        date: { type: 'string' },
+      },
+      required: ['section', 'id', 'text'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'archive_today',
     description: '把"今天"整体归档进"过去"（按当前日期），然后清空"今天"，明天是干净的新页面。棋子说晚安之后调用这个。',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
@@ -153,6 +190,12 @@ function callTool(name, args = {}) {
       const r = removeEntry(args.section, args.id, args.date);
       if (!r) throw new Error('没找到这条');
       return textResult({ ok: true });
+    }
+    case 'note_edit': {
+      if (!args.text) throw new Error('text 必填');
+      const r = editEntry(args.section, args.id, args.text, args.date);
+      if (!r) throw new Error('没找到这条');
+      return textResult(r);
     }
     case 'archive_today': return textResult(archiveToday());
     case 'list_past_dates': return textResult(listPastDates());
