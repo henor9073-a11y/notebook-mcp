@@ -1,7 +1,8 @@
 // 辞的笔记本——跟 ci-hours/木纹完全独立的一个小 MCP。没有前端，只有辞自己用。
-// 六个分区：today（今天，每天归档清空）/ sticky（便签、铁律，一直留着）/ for_nor（给Nor的）/
+// 七个分区：today（今天，每天归档清空）/ sticky（便签、铁律，一直留着）/ for_nor（给Nor的）/ games（游戏进度，一直留着）/
 // heartbeat（heartbeat 和 schedule 两个苏醒系统的活动记录，7 天自动清）/ draft（草稿箱）/
 // past（过去，today 归档进来的地方，按日期存）。
+// 2026-09-19 加 games 分区：玩到哪了、下一步干嘛。一个游戏一条，进度变了用 note_edit 改那条，不用每次新写。
 // 2026-09-03 按辞写的《notebook MCP 改版spec》加了 heartbeat/draft、note_search、tags。
 // 跟 ci-hours 同一套手写 MCP JSON-RPC 协议，尽量写得短——这个工具本来就是为了省 token。整体保持轻量，不是第二个木纹。
 
@@ -47,15 +48,15 @@ function localDate(at) {
   return isNaN(d) ? String(at).slice(0, 10) : d.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 }
 
-const DIRECT_SECTIONS = ['today', 'sticky', 'for_nor', 'heartbeat', 'draft'];
+const DIRECT_SECTIONS = ['today', 'sticky', 'for_nor', 'heartbeat', 'draft', 'games'];
 const ALL_SECTIONS = [...DIRECT_SECTIONS, 'past'];
 const NO_EDIT = ['heartbeat']; // 记录写了就不改
 const PRESET_TAGS = ['heartbeat', 'schedule', '想法', '给她的', '记忆', '技术'];
-const EMPTY = { today: [], sticky: [], for_nor: [], heartbeat: [], draft: [], past: [] };
+const EMPTY = { today: [], sticky: [], for_nor: [], heartbeat: [], draft: [], games: [], past: [] };
 
 function load() {
   const data = readJSON(NOTEBOOK_FILE, null) || structuredClone(EMPTY);
-  // 旧文件没有 heartbeat/draft 这两个 key，补上
+  // 旧文件没有 heartbeat/draft/games 这几个 key，补上
   for (const k of Object.keys(EMPTY)) if (!Array.isArray(data[k])) data[k] = [];
   return data;
 }
@@ -231,7 +232,7 @@ function search(query, section, tag, limit = 30) {
 
 // ---- MCP ----
 
-const SECTION_HELP = 'today(今天的随手记)/sticky(长期提醒、铁律)/for_nor(给Nor的)/heartbeat(两个苏醒系统的活动记录，写了就不改，只留最近 7 天)/draft(草稿箱：写到一半的、还没决定要不要给她看的)';
+const SECTION_HELP = 'today(今天的随手记)/sticky(长期提醒、铁律)/for_nor(给Nor的)/heartbeat(两个苏醒系统的活动记录，写了就不改，只留最近 7 天)/draft(草稿箱：写到一半的、还没决定要不要给她看的)/games(游戏进度：一个游戏一条，写玩到哪了、卡在哪、下一步，tag 带上游戏名；进度变了用 note_edit 改那条，不新写)';
 const TAG_HELP = `tags 可选，字符串数组。预设常用的：${PRESET_TAGS.join(' / ')}，也可以自定义。`;
 
 const TOOLS = [
@@ -251,7 +252,7 @@ const TOOLS = [
   },
   {
     name: 'note_read',
-    description: '读一个分区。section: today/sticky/for_nor/heartbeat/draft/past。past 不传 date 只回日期列表，传 date(YYYY-MM-DD) 回那天的条目。tag 可选，只看带这个 tag 的。',
+    description: '读一个分区。section: today/sticky/for_nor/heartbeat/draft/games/past。past 不传 date 只回日期列表，传 date(YYYY-MM-DD) 回那天的条目。tag 可选，只看带这个 tag 的。',
     inputSchema: {
       type: 'object',
       properties: { section: { type: 'string', enum: ALL_SECTIONS }, date: { type: 'string' }, tag: { type: 'string' } },
@@ -361,8 +362,8 @@ app.post('/mcp', (req, res) => {
           result = {
             protocolVersion: '2024-11-05',
             capabilities: { tools: {} },
-            serverInfo: { name: 'notebook', version: '1.1.0' },
-            instructions: '辞自己的笔记本，跟 ci-hours/木纹分开。today/sticky/for_nor/heartbeat/draft/past 六个分区，能按 tag 过滤、能 note_search 搜，没有前端。',
+            serverInfo: { name: 'notebook', version: '1.2.0' },
+            instructions: '辞自己的笔记本，跟 ci-hours/木纹分开。today/sticky/for_nor/heartbeat/draft/games/past 七个分区，能按 tag 过滤、能 note_search 搜，没有前端。',
           };
           break;
         case 'tools/list':

@@ -20,12 +20,13 @@ try {
   await step('tools/list 有 note_search，write 的 section 有 heartbeat/draft', async () => {
     const t = (await rpc('tools/list')).result.tools;
     assert.ok(t.find(x => x.name === 'note_search'));
-    assert.deepEqual(t.find(x => x.name === 'write').inputSchema.properties.section.enum, ['today', 'sticky', 'for_nor', 'heartbeat', 'draft']);
+    assert.deepEqual(t.find(x => x.name === 'write').inputSchema.properties.section.enum, ['today', 'sticky', 'for_nor', 'heartbeat', 'draft', 'games']);
   });
   await step('旧文件能读，缺的分区自动补', async () => {
     assert.equal((await call('note_read', { section: 'today' })).length, 1);
     assert.deepEqual(await call('note_read', { section: 'heartbeat' }), []);
     assert.deepEqual(await call('note_read', { section: 'draft' }), []);
+    assert.deepEqual(await call('note_read', { section: 'games' }), []);
   });
   let hb;
   await step('heartbeat：写、读、不能改、能删；时间戳是墨尔本时间', async () => {
@@ -70,6 +71,15 @@ try {
     const entries = await call('note_read', { section: 'past', date: a.date, tag: '记忆' });
     assert.equal(entries[0].text, '晚上聊了记忆整理'); assert.equal(entries[0].section, 'past');
     assert.equal((await call('list_past_dates')).length, 2);
+  });
+  await step('games：一个游戏一条，进度变了改那条；按游戏名 tag 读、能搜到；不跟着 today 归档', async () => {
+    const g = await call('write', { section: 'games', text: '星露谷：第一年春 12 日，钓鱼 3 级。下一步：凑够钱修温室', tags: ['星露谷'] });
+    const e = await call('note_edit', { section: 'games', id: g.id, text: '星露谷：第一年夏 3 日，钓鱼 5 级。温室修好了' });
+    assert.ok(e.text.includes('夏 3 日') && e.editedAt); assert.deepEqual(e.tags, ['星露谷']);
+    assert.equal((await call('note_read', { section: 'games', tag: '星露谷' })).length, 1);
+    assert.equal((await call('note_search', { query: '温室' }))[0].section, 'games');
+    await call('archive_today');
+    assert.equal((await call('note_read', { section: 'games' })).length, 1, '游戏进度一直留着');
   });
   await step('sticky / for_nor 用法不变；删除', async () => {
     const s = await call('write', { section: 'sticky', text: '新铁律' });
